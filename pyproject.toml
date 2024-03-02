@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = 'seltran'
+version = '0.1.0'
+dependencies = [
+    "pysubs2",
+    "spacy",
+    "jamdict",
+    "jamdict-data",
+    "ginza",
+    "ja_ginza",
+    "customtkinter"
+]
+
+[project.gui-scripts]
+seltran-gui = "seltran.gui:main"
