@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Iterable, Union, Optional
 import logging
 import spacy
 from spacy.tokens import Token
@@ -116,6 +116,16 @@ class TokenFilter(object):
         self.exclude_lemmas = exclude_lemmas
         self.exclude_foreign = exclude_foreign
 
+    def __call__(self, token: Token):
+        return all(
+            match(token)
+            for match in [
+                self._match_pos,
+                self._match_lemma,
+                self._match_foreign_chars,
+            ]
+        )
+
     def _match_foreign_chars(self, token: Token) -> bool:
         if self.exclude_foreign:
             return is_text_japanese(token.text)
@@ -127,20 +137,10 @@ class TokenFilter(object):
     def _match_lemma(self, token: Token) -> bool:
         return token.lemma_ not in self.exclude_lemmas
 
-    def match(self, token: Token) -> bool:
-        return all(
-            match(token)
-            for match in [
-                self._match_pos,
-                self._match_lemma,
-                self._match_foreign_chars,
-            ]
-        )
-
 
 class SelectiveTranslator(object):
     def __init__(self):
-        self.translate_filter = TokenFilter(
+        self.should_translate = TokenFilter(
             include_pos=[
                 "NOUN",
                 "VERB",
@@ -160,7 +160,7 @@ class SelectiveTranslator(object):
                 "NOUN",
             ]
         )
-        self.tokenize = spacy.load("ja_ginza")
+        self.nlp = spacy.load("ja_ginza")
         self._jamdict = Jamdict()
 
     def _format_english(self, text: str) -> str:
@@ -185,11 +185,11 @@ class SelectiveTranslator(object):
             for gloss in sense.gloss
         ]
 
-    def _split_to_words(self, tokens: list[Token]) -> list[list[Token]]:
+    def _split_to_words(self, tokens: Iterable[Token]) -> list[list[Token]]:
         words = []
         word: list[Token] = []
         for token in tokens:
-            if self.word_start_filter.match(token):
+            if self.word_start_filter(token):
                 if word:
                     words.append(word)
                 word = []
@@ -211,15 +211,15 @@ class SelectiveTranslator(object):
             if prepend_hyphen:
                 translated.append("-")
 
-            if not self.translate_filter.match(token):
-                translated.append(token.text + token.whitespace_)
+            if not self.should_translate(token):
+                translated.append(token.text_with_ws)
                 prepend_hyphen = False
                 logger.debug(f"Token {token.text.strip()} ({token.pos_}) kept as is")
                 continue
 
             translations = self.get_possible_translations(token)
             if not translations:
-                translated.append(token.text + token.whitespace_)
+                translated.append(token.text_with_ws)
                 prepend_hyphen = False
                 logger.warning(
                     f'No definitions found for token "{token.text.strip()}" ({token.pos_}, dict. form {token.lemma_}), token kept as is'
@@ -233,10 +233,10 @@ class SelectiveTranslator(object):
                 )
                 continue
 
-        return ''.join(translated)
+        return "".join(translated)
 
     def translate_dumb(self, text: str) -> str:
-        tokens = self.tokenize(text)
+        tokens = self.nlp(text)
         words = self._split_to_words(tokens)
         translated_words = [self._translate_dumb(word) for word in words]
         return " ".join(translated_words)
