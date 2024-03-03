@@ -19,4 +19,4 @@ dependencies = [
 ]
 
 [project.gui-scripts]
-seltran-gui = "seltran.gui:main"
+seltran-editor = "seltran.gui:main"
