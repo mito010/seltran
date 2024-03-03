@@ -19,12 +19,6 @@ def TAG_UNIQUE(id: str) -> str:
     return _TAG_UNIQUE + id
 
 
-# @dataclass
-# class TranslatedToken:
-#     token: Token
-#     tag: str
-
-
 def is_index_in_range(
     textbox: ctk.CTkTextbox, index: str, start: str, end: str
 ) -> bool:
@@ -86,6 +80,7 @@ class Editor(ctk.CTkFrame):
         text = self.textbox.get(0.0, "end-1c")
         self.text_doc = self.translator.nlp(text)
 
+        # Add tags from NLP results
         for token in self.text_doc:
             if not self.translator.should_translate(token):
                 continue
@@ -100,6 +95,11 @@ class Editor(ctk.CTkFrame):
             self.textbox.tag_add(unique_tag, start, end)
 
     def get_event_unique_tag(self, event) -> Optional[tuple[str, tuple[str, str]]]:
+        """Find the unique tag which contains an event's location, if there is one.
+
+        :param event: Tk event
+        :return Optional[tuple[str, tuple[str, str]]]: (tag_name, (start_index, end_index)) or None
+        """
         for tag in self.textbox.tag_names():
             if not is_unique_tag(tag):
                 continue
@@ -112,7 +112,7 @@ class Editor(ctk.CTkFrame):
     def get_event_ranges_of_tag(self, event, tag: str) -> list[tuple[str, str]]:
         """Find all index ranges of a specific tag matching an event's location
 
-        :param event: e.g. click event
+        :param event: Tk event
         :param str tag: Tag name to match the event's location against
         :return list[tuple[str, str]]: All matching index ranges which are tagged as `tag` and contain the event location
         """
@@ -146,10 +146,6 @@ class Editor(ctk.CTkFrame):
 
         return tags
 
-    def get_unique_tag_of_range(self, tag_range: tuple[str, str]) -> Optional[str]:
-        unique_tags = list(filter(is_unique_tag, self.get_tags_of_range(tag_range)))
-        return unique_tags[0] if unique_tags else None
-
     def select_clicked_translatable(self, event):
         # A unique tag is assured to be under the event since this callback is only
         # called for clicks on tagged text.
@@ -166,11 +162,11 @@ class Editor(ctk.CTkFrame):
     def update_possible_translations(self, token: Token):
         translations = self.translator.get_possible_translations(token)
         self.select_translation_combo.configure(values=translations)
-        self.select_translation_combo.set('Select translation...')
-    
+        self.select_translation_combo.set("Select translation...")
+
     def reset_possible_translations(self):
         self.select_translation_combo.configure(values=[])
-        self.select_translation_combo.set('No word selected')
+        self.select_translation_combo.set("No word selected")
 
 
 class App(ctk.CTk):
