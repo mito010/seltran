@@ -14,7 +14,7 @@ def main():
     logging.getLogger().addHandler(RichHandler())
     translator = SelectiveTranslator()
     text = '魔王を倒したからといって'
-    print(translator.translate(text))
+    print(translator.translate_dumb(text))
 
 
 if __name__ == '__main__':
