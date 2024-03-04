@@ -294,8 +294,8 @@ class Editor(ctk.CTkFrame):
         # Insert fitting separators before and after the inserted translation
         if selected_token.text != translation and selected_token.i + 1 < len(
             selected_token.doc
-        ):
-            if not self.settings.filter_start_of_new_word(selected_token.nbor(1)):
+        ) and (next_token := selected_token.nbor(1)).pos_ != "PUNCT":
+            if not self.settings.filter_start_of_new_word(next_token):
                 translation += "-"
             else:
                 translation += " "
