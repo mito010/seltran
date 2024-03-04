@@ -234,7 +234,7 @@ class Editor(ctk.CTkFrame):
 
     def update_possible_translations(self, token: Token):
         translations = self.translator.get_possible_translations(token)
-        self.select_translation_combo.configure(values=translations)
+        self.select_translation_combo.configure(values=[token.text] + translations)
         if translations:
             self.select_translation_combo.set("Select translation...")
         else:
