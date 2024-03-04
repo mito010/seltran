@@ -4,6 +4,7 @@ import customtkinter as ctk
 from . import Settings
 from .editor import Editor
 
+
 class App(ctk.CTk):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -24,10 +25,13 @@ class App(ctk.CTk):
         self.import_text_file_button = ctk.CTkButton(
             master=self,
             text="Import Text File...",
-            command=lambda: [f() for f in [
-                self.prompt_import_text_file,
-                self.editor.run_nlp,
-            ]],
+            command=lambda: [
+                f()
+                for f in [
+                    self.prompt_import_text_file,
+                    self.editor.run_nlp,
+                ]
+            ],
         )
         self.save_as_text_button = ctk.CTkButton(
             master=self,
@@ -45,6 +49,9 @@ class App(ctk.CTk):
 
     def prompt_import_text_file(self):
         path = tkfd.askopenfilename()
+        if not path:
+            return
+
         with open(path, "r") as f:
             text = f.read()
 
@@ -52,5 +59,8 @@ class App(ctk.CTk):
 
     def prompt_save_as_text(self):
         path = tkfd.asksaveasfilename()
+        if not path:
+            return
+
         with open(path, "w") as f:
             f.write(self.editor.get_text())
