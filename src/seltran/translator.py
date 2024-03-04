@@ -146,12 +146,12 @@ class SelectiveTranslator(object):
                 "VERB",
                 "ADJ",
             ],
-            exclude_lemmas=[
-                "くる",
-                "いう",
-                "いる",
-                "こと",
-            ],
+            # exclude_lemmas=[
+            #     "くる",
+            #     "いう",
+            #     "いる",
+            #     "こと",
+            # ],
             exclude_foreign=True,
         )
         self.word_start_filter = TokenFilter(
@@ -162,6 +162,14 @@ class SelectiveTranslator(object):
         )
         self.nlp = spacy.load("ja_ginza")
         self._jamdict = Jamdict()
+
+    def _format_dictionary_gloss(self, text: str) -> str:
+        text = self._format_english(text)
+
+        if text.startswith("TO-"):
+            text = text[3:]
+
+        return text
 
     def _format_english(self, text: str) -> str:
         return "-".join(text.strip().split()).upper()
@@ -179,7 +187,7 @@ class SelectiveTranslator(object):
         ).entries
 
         return [
-            self._format_english(str(gloss))
+            self._format_dictionary_gloss(str(gloss))
             for t in definitions
             for sense in t.senses
             for gloss in sense.gloss
