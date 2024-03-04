@@ -4,8 +4,7 @@ from typing import Callable, Optional
 import customtkinter as ctk
 from spacy.tokens import Token, Doc
 import random
-
-from seltran.translator import SelectiveTranslator
+from seltran.gui.app import Settings
 
 TAG_TRANSLATABLE = "translatable"
 TAG_SELECTED_TOKEN = "selected"
@@ -131,16 +130,18 @@ class EditorTextbox(ctk.CTkTextbox):
         self.delete(index_range.start, index_range.end)
 
         self.insert(index_range.start, new_text)
-        index_range = IndexRange(index_range.start, f"{index_range.start}+{len(new_text)}c")
+        index_range = IndexRange(
+            index_range.start, f"{index_range.start}+{len(new_text)}c"
+        )
         for tag in old_tags:
             self.tag_add(tag, index_range.start, index_range.end)
 
 
 class Editor(ctk.CTkFrame):
-    def __init__(self, **kwargs):
+    def __init__(self, settings: Settings, **kwargs):
         super().__init__(**kwargs)
 
-        self.translator = SelectiveTranslator()
+        self.settings = settings
         self.tokens: Optional[Doc] = None
         self.token_tags: dict[str, Token] = dict()
 
@@ -177,7 +178,7 @@ class Editor(ctk.CTkFrame):
     def run_nlp(self):
         # Analyze the text
         text = self.textbox.get(0.0, "end-1c")
-        self.tokens = self.translator.nlp(text)
+        self.tokens = self.settings.translator.nlp(text)
 
         existing_token_tags = self.textbox.tag_query(is_token_tag)
         token_tag_ranges = set(existing_token_tags.values())
@@ -191,7 +192,7 @@ class Editor(ctk.CTkFrame):
 
         # Add tags from NLP results
         for token in self.tokens:
-            if not self.translator.should_translate(token):
+            if not self.settings.filter_translatable(token):
                 continue
 
             token_start = f"1.0+{token.idx}c"
@@ -257,7 +258,7 @@ class Editor(ctk.CTkFrame):
         self.textbox.tag_add(TAG_SELECTED_TOKEN, clicked_range.start, clicked_range.end)
 
     def update_possible_translations(self, token: Token):
-        translations = self.translator.get_possible_translations(token)
+        translations = self.settings.translator.get_dictionary_translations(token)
         self.select_translation_combo.configure(values=[token.text] + translations)
         if translations:
             self.select_translation_combo.set("Select translation...")

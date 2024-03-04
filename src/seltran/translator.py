@@ -146,12 +146,6 @@ class SelectiveTranslator(object):
                 "VERB",
                 "ADJ",
             ],
-            # exclude_lemmas=[
-            #     "くる",
-            #     "いう",
-            #     "いる",
-            #     "こと",
-            # ],
             exclude_foreign=True,
         )
         self.word_start_filter = TokenFilter(
@@ -174,7 +168,7 @@ class SelectiveTranslator(object):
     def _format_english(self, text: str) -> str:
         return "-".join(text.strip().split()).upper()
 
-    def get_possible_translations(self, token: Token) -> list[str]:
+    def get_dictionary_translations(self, token: Token) -> list[str]:
         dictionary_pos = universal_to_dictionary_pos(token.pos_)
         if dictionary_pos is None:
             logger.warning(
@@ -225,7 +219,7 @@ class SelectiveTranslator(object):
                 logger.debug(f"Token {token.text.strip()} ({token.pos_}) kept as is")
                 continue
 
-            translations = self.get_possible_translations(token)
+            translations = self.get_dictionary_translations(token)
             if not translations:
                 translated.append(token.text_with_ws)
                 prepend_hyphen = False
