@@ -10,6 +10,9 @@ class App(ctk.CTk):
 
         self.settings = Settings()
 
+        self.title("Japanese Selective Translator!")
+        self.geometry("400x600")
+
         self.editor = Editor(master=self, settings=self.settings)
 
         self.translate_button = ctk.CTkButton(
@@ -21,7 +24,10 @@ class App(ctk.CTk):
         self.import_text_file_button = ctk.CTkButton(
             master=self,
             text="Import Text File...",
-            command=self.prompt_import_text_file,
+            command=lambda: [f() for f in [
+                self.prompt_import_text_file,
+                self.editor.run_nlp,
+            ]],
         )
         self.save_as_text_button = ctk.CTkButton(
             master=self,
