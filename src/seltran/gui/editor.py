@@ -135,7 +135,7 @@ class EditorTextbox(ctk.CTkTextbox):
         )
         for tag in old_tags:
             self.tag_add(tag, new_range.start, new_range.end)
-        
+
         return new_range
 
 
@@ -194,9 +194,6 @@ class Editor(ctk.CTkFrame):
 
         # Add tags from NLP results
         for token in self.tokens:
-            if not self.settings.filter_translatable(token):
-                continue
-
             token_start = f"1.0+{token.idx}c"
             token_end = f"1.0+{token.idx + len(token.text)}c"
 
@@ -212,9 +209,12 @@ class Editor(ctk.CTkFrame):
 
             token_tag = self._get_free_token_tag()
             self.token_tags[token_tag] = token
-
-            self.textbox.tag_add(TAG_TRANSLATABLE, token_start, token_end)
             self.textbox.tag_add(token_tag, token_start, token_end)
+
+            if self.settings.filter_translatable(token):
+                self.textbox.tag_add(TAG_TRANSLATABLE, token_start, token_end)
+
+        print(self.token_tags)
 
     def get_token_tag_for_event(self, event) -> Optional[TagInfo]:
         """Find the token tag which contains an event's location, if there is one.
@@ -280,18 +280,19 @@ class Editor(ctk.CTkFrame):
 
         selected_token = self.token_tags[selected_token_tag.tag]
 
-        new_range = self.textbox.replace_text(selected_token_tag.range, translation)
-
-        # Insert a fitting separator after the inserted translation
-        char_after_selected = self.textbox.get(new_range.end)
-        if selected_token.text != translation and char_after_selected not in (" ", "-"):
+        # Insert fitting separators before and after the inserted translation
+        if selected_token.text != translation:
             if not self.settings.filter_start_of_new_word(selected_token.nbor(1)):
-                separator = "-"
+                translation += "-"
             else:
-                separator = " "
-            self.textbox.insert(new_range.end, separator)
+                translation += " "
+            # TODO: Don't prepend anything if start of line or sentence
+            if self.settings.filter_start_of_new_word(selected_token):
+                translation = " " + translation
+            else:
+                translation = "-" + translation
 
-        
+        self.textbox.replace_text(selected_token_tag.range, translation)
 
     def insert_text(self, text: str):
         self.reset_content()
