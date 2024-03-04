@@ -123,18 +123,20 @@ class EditorTextbox(ctk.CTkTextbox):
             tags[tag] = tag_ranges[0]
         return tags
 
-    def replace_text(self, index_range: IndexRange, new_text: str):
+    def replace_text(self, index_range: IndexRange, new_text: str) -> IndexRange:
         old_tags = self.get_tags_containing_range(index_range)
 
         # Deleting the selected range also removes all tags from the range
         self.delete(index_range.start, index_range.end)
 
         self.insert(index_range.start, new_text)
-        index_range = IndexRange(
+        new_range = IndexRange(
             index_range.start, f"{index_range.start}+{len(new_text)}c"
         )
         for tag in old_tags:
-            self.tag_add(tag, index_range.start, index_range.end)
+            self.tag_add(tag, new_range.start, new_range.end)
+        
+        return new_range
 
 
 class Editor(ctk.CTkFrame):
@@ -278,10 +280,18 @@ class Editor(ctk.CTkFrame):
 
         selected_token = self.token_tags[selected_token_tag.tag]
 
-        if not self.settings.filter_start_of_new_word(selected_token.nbor(1)):
-            translation += "-"
+        new_range = self.textbox.replace_text(selected_token_tag.range, translation)
 
-        self.textbox.replace_text(selected_token_tag.range, translation)
+        # Insert a fitting separator after the inserted translation
+        char_after_selected = self.textbox.get(new_range.end)
+        if selected_token.text != translation and char_after_selected not in (" ", "-"):
+            if not self.settings.filter_start_of_new_word(selected_token.nbor(1)):
+                separator = "-"
+            else:
+                separator = " "
+            self.textbox.insert(new_range.end, separator)
+
+        
 
     def insert_text(self, text: str):
         self.reset_content()
