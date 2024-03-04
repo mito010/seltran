@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from pydoc import doc
 from typing import Callable, Optional
 import customtkinter as ctk
 from spacy.tokens import Token, Doc
@@ -148,7 +149,7 @@ class Editor(ctk.CTkFrame):
         self.token_tags: dict[str, Token] = dict()
 
         self.textbox = EditorTextbox(master=self)
-        self.textbox.tag_config(TAG_TRANSLATABLE, background="blue")
+        # self.textbox.tag_config(TAG_TRANSLATABLE, background="blue")
         self.textbox.tag_bind(
             TAG_TRANSLATABLE,
             "<Button-1>",
@@ -211,10 +212,8 @@ class Editor(ctk.CTkFrame):
             self.token_tags[token_tag] = token
             self.textbox.tag_add(token_tag, token_start, token_end)
 
-            if self.settings.filter_translatable(token):
-                self.textbox.tag_add(TAG_TRANSLATABLE, token_start, token_end)
-
-        print(self.token_tags)
+            # if self.settings.filter_translatable(token):
+            self.textbox.tag_add(TAG_TRANSLATABLE, token_start, token_end)
 
     def get_token_tag_for_event(self, event) -> Optional[TagInfo]:
         """Find the token tag which contains an event's location, if there is one.
@@ -260,9 +259,21 @@ class Editor(ctk.CTkFrame):
         self.textbox.tag_add(TAG_SELECTED_TOKEN, clicked_range.start, clicked_range.end)
 
     def update_possible_translations(self, token: Token):
-        translations = self.settings.translator.get_dictionary_translations(token)
-        self.select_translation_combo.configure(values=[token.text] + translations)
-        if translations:
+        translations = (
+            self.settings.translator.get_dictionary_translations(token)
+            if self.settings.filter_should_translate(token)
+            else []
+        )
+        phonemes = (
+            [phonemes]
+            if (phonemes := self.settings.translator.get_phonemes(token))
+            else []
+        )
+        self.select_translation_combo.configure(
+            values=[token.text] + phonemes + translations
+        )
+
+        if phonemes or translations:
             self.select_translation_combo.set("Select translation...")
         else:
             self.select_translation_combo.set("No available translation")
@@ -281,16 +292,13 @@ class Editor(ctk.CTkFrame):
         selected_token = self.token_tags[selected_token_tag.tag]
 
         # Insert fitting separators before and after the inserted translation
-        if selected_token.text != translation:
+        if selected_token.text != translation and selected_token.i + 1 < len(
+            selected_token.doc
+        ):
             if not self.settings.filter_start_of_new_word(selected_token.nbor(1)):
                 translation += "-"
             else:
                 translation += " "
-            # TODO: Don't prepend anything if start of line or sentence
-            if self.settings.filter_start_of_new_word(selected_token):
-                translation = " " + translation
-            else:
-                translation = "-" + translation
 
         self.textbox.replace_text(selected_token_tag.range, translation)
 

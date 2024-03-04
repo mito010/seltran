@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from tkinter import filedialog as tkfd
 import customtkinter as ctk
 

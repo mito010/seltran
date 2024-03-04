@@ -9,7 +9,7 @@ from seltran.translator import SelectiveTranslator, TokenFilter
 @dataclass(frozen=False)
 class Settings:
     translator: SelectiveTranslator = SelectiveTranslator()
-    filter_translatable: TokenFilter = TokenFilter(
+    filter_should_translate: TokenFilter = TokenFilter(
         include_pos=[
             "NOUN",
             "VERB",

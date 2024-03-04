@@ -3,6 +3,7 @@ import logging
 import spacy
 from spacy.tokens import Token
 from jamdict import Jamdict
+from jphones import jphones as j2p
 import re
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,7 @@ class SelectiveTranslator(object):
         )
         self.nlp = spacy.load("ja_ginza")
         self._jamdict = Jamdict()
+        self._phonetizer = j2p.phonetizer.Phonetizer()
 
     def _format_dictionary_gloss(self, text: str) -> str:
         text = self._format_english(text)
@@ -188,6 +190,16 @@ class SelectiveTranslator(object):
             for sense in t.senses
             for gloss in sense.gloss
         ]
+
+    def get_phonemes(self, token: Token) -> str:
+        return "".join(
+            self._phonetizer.get_phonemes(
+                {
+                    "token": token.text,
+                    "type": "word",
+                }
+            )["phonemes"]
+        )
 
     def _split_to_words(self, tokens: Iterable[Token]) -> list[list[Token]]:
         words = []

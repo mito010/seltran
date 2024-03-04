@@ -15,7 +15,12 @@ dependencies = [
     "jamdict-data",
     "ginza",
     "ja_ginza",
-    "customtkinter"
+    "customtkinter",
+    "jphones @ git+https://github.com/JRMeyer/jphones.git",
+    "six",
+    "semidbm",
+    "pykakasi",
+    "japanese-numbers-python",
 ]
 
 [project.gui-scripts]
