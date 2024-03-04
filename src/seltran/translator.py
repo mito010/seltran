@@ -3,7 +3,7 @@ import logging
 import spacy
 from spacy.tokens import Token
 from jamdict import Jamdict
-import pysubs2
+import re
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -160,10 +160,12 @@ class SelectiveTranslator(object):
     def _format_dictionary_gloss(self, text: str) -> str:
         text = self._format_english(text)
 
-        if text.startswith("TO-"):
-            text = text[3:]
+        match = re.search(r"^(TO-)?(?P<word>.+?)(-\(.*\))?$", text)
+        if match is None:
+            logger.error(f"Failed to parse dictionary gloss {text}")
+            return "<ERROR_PARSING_DICTIONARY_GLOSS>"
 
-        return text
+        return match.group("word")
 
     def _format_english(self, text: str) -> str:
         return "-".join(text.strip().split()).upper()
