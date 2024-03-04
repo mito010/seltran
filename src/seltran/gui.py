@@ -111,22 +111,14 @@ class EditorTextbox(ctk.CTkTextbox):
             tags[tag] = tag_ranges[0]
         return tags
 
-    def reset_content(self):
-        self.delete("1.0", "end")
-
 
 class Editor(ctk.CTkFrame):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.translator = SelectiveTranslator()
-
-        self.text_doc: Optional[Doc] = None
-
+        self.tokens: Optional[Doc] = None
         self.unique_tags: dict[str, Token] = dict()
-
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
 
         self.textbox = EditorTextbox(master=self)
         self.textbox.tag_config(TAG_TRANSLATABLE, background="blue")
@@ -137,34 +129,16 @@ class Editor(ctk.CTkFrame):
         )
         self.textbox.tag_config(TAG_SELECTED_UNIQUE, background="red")
 
-        self.translate_button = ctk.CTkButton(
-            master=self,
-            text="Translate",
-            command=self.run_nlp,
-        )
-
         self.select_translation_combo = ctk.CTkComboBox(
             master=self, command=self.apply_picked_translation_to_selected_unique
         )
         self.reset_possible_translations()
 
-        self.import_text_file_button = ctk.CTkButton(
-            master=self,
-            text="Import Text File...",
-            command=self.prompt_import_text_file,
-        )
-        self.save_as_text_button = ctk.CTkButton(
-            master=self,
-            text="Save as Text",
-            command=self.prompt_save_as_text,
-        )
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
+        self.select_translation_combo.grid(sticky="EW")
         self.textbox.grid(sticky="EWNS")
-        self.select_translation_combo.grid(sticky="EWNS")
-        self.translate_button.grid(sticky="EWNS")
-        self.import_text_file_button.grid(sticky="EWNS")
-        self.save_as_text_button.grid(sticky="EWNS")
-
 
     def _get_free_unique_tag(self) -> str:
         while True:
@@ -173,10 +147,13 @@ class Editor(ctk.CTkFrame):
             if tag not in self.unique_tags:
                 return tag
 
+    def reset_content(self):
+        self.textbox.delete("1.0", "end")
+
     def run_nlp(self):
         # Analyze the text
         text = self.textbox.get(0.0, "end-1c")
-        self.text_doc = self.translator.nlp(text)
+        self.tokens = self.translator.nlp(text)
 
         unique_tags = self.textbox.tags_unique(is_unique_tag)
         existing_unique_tags = set(unique_tags.keys())
@@ -189,7 +166,7 @@ class Editor(ctk.CTkFrame):
                 self.textbox.tag_delete(tag)
 
         # Add tags from NLP results
-        for token in self.text_doc:
+        for token in self.tokens:
             if not self.translator.should_translate(token):
                 continue
 
@@ -287,20 +264,12 @@ class Editor(ctk.CTkFrame):
         for tag in old_tags:
             self.textbox.tag_add(tag, selected_range[0], selected_range[1])
 
-    def prompt_import_text_file(self):
-        path = tkfd.askopenfilename()
-        with open(path, "r") as f:
-            text = f.read()
-
-        self.textbox.reset_content()
+    def insert_text(self, text: str):
+        self.reset_content()
         self.textbox.insert("1.0", text)
 
-    def prompt_save_as_text(self):
-        text = self.textbox.get("1.0", "end")
-
-        path = tkfd.asksaveasfilename()
-        with open(path, "w") as f:
-            f.write(text)
+    def get_text(self):
+        return self.textbox.get("1.0", "end")
 
 
 class App(ctk.CTk):
@@ -308,9 +277,43 @@ class App(ctk.CTk):
         super().__init__(**kwargs)
 
         self.editor = Editor(master=self)
-        self.editor.grid(sticky="EWNS")
+
+        self.translate_button = ctk.CTkButton(
+            master=self,
+            text="Translate",
+            command=self.editor.run_nlp,
+        )
+
+        self.import_text_file_button = ctk.CTkButton(
+            master=self,
+            text="Import Text File...",
+            command=self.prompt_import_text_file,
+        )
+        self.save_as_text_button = ctk.CTkButton(
+            master=self,
+            text="Save as Text",
+            command=self.prompt_save_as_text,
+        )
+
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
+
+        self.editor.grid(sticky="EWNS")
+        self.translate_button.grid(sticky="EWNS")
+        self.import_text_file_button.grid(sticky="EWNS")
+        self.save_as_text_button.grid(sticky="EWNS")
+
+    def prompt_import_text_file(self):
+        path = tkfd.askopenfilename()
+        with open(path, "r") as f:
+            text = f.read()
+
+        self.editor.insert_text(text)
+
+    def prompt_save_as_text(self):
+        path = tkfd.asksaveasfilename()
+        with open(path, "w") as f:
+            f.write(self.editor.get_text())
 
 
 def main():
