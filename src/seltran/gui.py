@@ -111,6 +111,17 @@ class EditorTextbox(ctk.CTkTextbox):
             tags[tag] = tag_ranges[0]
         return tags
 
+    def replace_text(self, index_range: tuple[str, str], new_text: str):
+        old_tags = self.get_tags_containing_range(index_range)
+
+        # Deleting the selected range also removes all tags from the range
+        self.delete(index_range[0], index_range[1])
+
+        self.insert(index_range[0], new_text)
+        index_range = (index_range[0], f"{index_range[0]}+{len(new_text)}c")
+        for tag in old_tags:
+            self.tag_add(tag, index_range[0], index_range[1])
+
 
 class Editor(ctk.CTkFrame):
     def __init__(self, **kwargs):
@@ -246,23 +257,14 @@ class Editor(ctk.CTkFrame):
 
     def apply_picked_translation_to_selected_unique(self, translation: str):
         selected_unique_tag = self.get_selected_unique_tag()
-
         # if the selection was deleted and the translation menu wasn't reset,
         # do nothing as the translation target is no more
         if selected_unique_tag is None:
             return
-
+        
         _, selected_range = selected_unique_tag
 
-        old_tags = self.textbox.get_tags_containing_range(selected_range)
-
-        # Deleting the selected range also removes all tags
-        self.textbox.delete(selected_range[0], selected_range[1])
-
-        self.textbox.insert(selected_range[0], translation)
-        selected_range = (selected_range[0], f"{selected_range[0]}+{len(translation)}c")
-        for tag in old_tags:
-            self.textbox.tag_add(tag, selected_range[0], selected_range[1])
+        self.textbox.replace_text(selected_range, translation)
 
     def insert_text(self, text: str):
         self.reset_content()
