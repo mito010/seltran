@@ -246,11 +246,13 @@ class Editor(ctk.CTkFrame):
         return TagInfo(selected_token_tag, selected_range)
 
     def select_clicked_translatable_tag(self, event):
-        # A token tag is assured to be under the event since this callback is only
-        # called for clicks on tagged text.
-        _ = self.get_token_tag_for_event(event)
-        assert _ is not None
-        token_tag, clicked_range = _.tag, _.range
+        # In cases of long translatable tag ranges which include multiple token tags,
+        # text inserted between those token tags becomes tagged as translatable but not as
+        # part of any token.
+        token_tag = self.get_token_tag_for_event(event)
+        if token_tag is None:
+            return
+        token_tag, clicked_range = token_tag.tag, token_tag.range
 
         token = self.token_tags[token_tag]
         self.update_possible_translations(token)
