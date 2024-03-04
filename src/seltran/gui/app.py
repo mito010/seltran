@@ -2,22 +2,8 @@ from dataclasses import dataclass
 from tkinter import filedialog as tkfd
 import customtkinter as ctk
 
+from . import Settings
 from .editor import Editor
-from seltran.translator import SelectiveTranslator, TokenFilter
-
-
-@dataclass(frozen=False)
-class Settings:
-    translator: SelectiveTranslator = SelectiveTranslator()
-    filter_translatable: TokenFilter = TokenFilter(
-        include_pos=[
-            "NOUN",
-            "VERB",
-            "ADJ",
-        ],
-        exclude_foreign=True,
-    )
-
 
 class App(ctk.CTk):
     def __init__(self, **kwargs):

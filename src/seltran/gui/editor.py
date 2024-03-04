@@ -4,7 +4,7 @@ from typing import Callable, Optional
 import customtkinter as ctk
 from spacy.tokens import Token, Doc
 import random
-from seltran.gui.app import Settings
+from seltran.gui import Settings
 
 TAG_TRANSLATABLE = "translatable"
 TAG_SELECTED_TOKEN = "selected"
@@ -275,6 +275,11 @@ class Editor(ctk.CTkFrame):
         # do nothing as the translation target is no more
         if selected_token_tag is None:
             return
+
+        selected_token = self.token_tags[selected_token_tag.tag]
+
+        if not self.settings.filter_start_of_new_word(selected_token.nbor(1)):
+            translation += "-"
 
         self.textbox.replace_text(selected_token_tag.range, translation)
 
