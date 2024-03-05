@@ -3,12 +3,12 @@ import logging
 from rich.logging import RichHandler
 import customtkinter as ctk
 
-from seltran.translator import SelectiveTranslator, TokenFilter
+from seltran.translator import JapaneseTranslator, TokenFilter
 
 
 @dataclass(frozen=False)
 class Settings:
-    translator: SelectiveTranslator = SelectiveTranslator()
+    translator: JapaneseTranslator = JapaneseTranslator()
     filter_should_translate: TokenFilter = TokenFilter(
         include_pos=[
             "NOUN",

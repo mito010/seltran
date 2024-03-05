@@ -139,7 +139,7 @@ class TokenFilter(object):
         return token.lemma_ not in self.exclude_lemmas
 
 
-class SelectiveTranslator(object):
+class JapaneseTranslator(object):
     def __init__(self):
         self.should_translate = TokenFilter(
             include_pos=[
@@ -193,59 +193,3 @@ class SelectiveTranslator(object):
 
     def get_phonemes(self, token: Token) -> str:
         return " ".join(kks["hepburn"] for kks in self._kks.convert(token.text))
-
-    def _split_to_words(self, tokens: Iterable[Token]) -> list[list[Token]]:
-        words = []
-        word: list[Token] = []
-        for token in tokens:
-            if self.word_start_filter(token):
-                if word:
-                    words.append(word)
-                word = []
-            word.append(token)
-
-        # Append last remaining word to the collected words
-        return words + [word]
-
-    def _translate_dumb(self, tokens: list[Token]) -> str:
-        """Selectively translate a sequence of tokens using a dumb selection algorithm for
-        the best translation candidate for each token - simply take the first matching dictionary entry.
-
-        :param list[Token] tokens: Token sequence to selectively translate
-        :return str: Translated string containing all tokens
-        """
-        translated = []
-        prepend_hyphen = False
-        for token in tokens:
-            if prepend_hyphen:
-                translated.append("-")
-
-            if not self.should_translate(token):
-                translated.append(token.text_with_ws)
-                prepend_hyphen = False
-                logger.debug(f"Token {token.text.strip()} ({token.pos_}) kept as is")
-                continue
-
-            translations = self.get_dictionary_translations(token)
-            if not translations:
-                translated.append(token.text_with_ws)
-                prepend_hyphen = False
-                logger.warning(
-                    f'No definitions found for token "{token.text.strip()}" ({token.pos_}, dict. form {token.lemma_}), token kept as is'
-                )
-                continue
-            else:
-                translated.append(translations[0])
-                prepend_hyphen = True
-                logger.debug(
-                    f"Token {token.text.strip()} ({token.pos_}) translated to {translations[0]}"
-                )
-                continue
-
-        return "".join(translated)
-
-    def translate_dumb(self, text: str) -> str:
-        tokens = self.nlp(text)
-        words = self._split_to_words(tokens)
-        translated_words = [self._translate_dumb(word) for word in words]
-        return " ".join(translated_words)
