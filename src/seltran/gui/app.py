@@ -1,3 +1,4 @@
+import tkinter as tk
 from tkinter import filedialog as tkfd
 import customtkinter as ctk
 
@@ -14,29 +15,19 @@ class App(ctk.CTk):
         self.title("Japanese Selective Translator!")
         self.geometry("400x600")
 
+        self.file_menu = tk.Menu(master=self, tearoff=0)
+        self.file_menu.add_command(label="save as text", command=self.prompt_save_as_text)
+        self.file_menu.add_command(label="import text file", command=self.prompt_import_text_file)
+        self.menubar = tk.Menu(master=self)
+        self.menubar.add_cascade(label="File", menu=self.file_menu)
+        self.configure(menu=self.menubar)
+
         self.editor = Editor(master=self, settings=self.settings)
 
         self.translate_button = ctk.CTkButton(
             master=self,
-            text="Translate",
+            text="Detect Tokens",
             command=self.editor.run_nlp,
-        )
-
-        self.import_text_file_button = ctk.CTkButton(
-            master=self,
-            text="Import Text File...",
-            command=lambda: [
-                f()
-                for f in [
-                    self.prompt_import_text_file,
-                    self.editor.run_nlp,
-                ]
-            ],
-        )
-        self.save_as_text_button = ctk.CTkButton(
-            master=self,
-            text="Save as Text",
-            command=self.prompt_save_as_text,
         )
 
         self.grid_columnconfigure(0, weight=1)
@@ -44,8 +35,6 @@ class App(ctk.CTk):
 
         self.editor.grid(sticky="EWNS")
         self.translate_button.grid(sticky="EWNS")
-        self.import_text_file_button.grid(sticky="EWNS")
-        self.save_as_text_button.grid(sticky="EWNS")
 
     def prompt_import_text_file(self):
         path = tkfd.askopenfilename()
@@ -56,6 +45,7 @@ class App(ctk.CTk):
             text = f.read()
 
         self.editor.insert_text(text)
+        self.editor.run_nlp()
 
     def prompt_save_as_text(self):
         path = tkfd.asksaveasfilename()
