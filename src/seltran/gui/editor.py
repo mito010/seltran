@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from pydoc import doc
 from typing import Callable, Optional
 import customtkinter as ctk
 from spacy.tokens import Token, Doc
