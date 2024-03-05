@@ -15,6 +15,16 @@ At this stage, this is only a proof of concept for the value such a tool can be 
 using Goken's subtitle format.
 If you like the idea or have any suggestions, please (!) open an issue or contact me @ megatron.levi@proton.me!
 
+## Try it out!
+
+Clone the repository and then:
+
+```sh
+pip install -e ./seltran
+```
+
+The `seltran-editor` executable will be installed in your python scripts directory.
+
 ## How?
 
 - All tokenization, translation and phonetization operations are performed offline, using the `spacy` and `pykakasi` NLP libraries
