@@ -1,10 +1,13 @@
 from collections import defaultdict
 from dataclasses import dataclass
+import threading
 from typing import Callable, Optional
+import tkinter as tk
 import customtkinter as ctk
 from spacy.tokens import Token, Doc
 import random
 from seltran.gui import Settings
+from seltran.gui.app import TkCallQueue
 
 TAG_TRANSLATABLE = "translatable"
 TAG_SELECTED_TOKEN = "selected"
@@ -66,6 +69,14 @@ class EditorTextbox(ctk.CTkTextbox):
             IndexRange(str(tag_ranges[i]), str(tag_ranges[i + 1]))
             for i in range(0, len(tag_ranges), 2)
         ]
+
+    def overlapping_tag_names(self, index_range: IndexRange) -> set[str]:
+        range_size = self._textbox.count(index_range.start, index_range.end, "chars")[0]
+        return set(
+            tag_name
+            for i in range(range_size)
+            for tag_name in self.tag_names(index_range.start + f"+{i}c")
+        )
 
     def get_tags_of_exactly_range(self, tag_range: IndexRange) -> list[Tag]:
         tags = []
@@ -140,12 +151,13 @@ class EditorTextbox(ctk.CTkTextbox):
 
 
 class Editor(ctk.CTkFrame):
-    def __init__(self, settings: Settings, **kwargs):
+    def __init__(self, settings: Settings, call_queue: TkCallQueue, **kwargs):
         super().__init__(**kwargs)
 
         self.settings = settings
         self.tokens: Optional[Doc] = None
         self.token_tags: dict[str, Token] = dict()
+        self._ui_call_queue = call_queue
 
         self.textbox = EditorTextbox(master=self)
         # self.textbox.tag_config(TAG_TRANSLATABLE, background="blue")
@@ -161,11 +173,16 @@ class Editor(ctk.CTkFrame):
         )
         self.reset_possible_translations()
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.status = tk.StringVar()
+        self.status_bar = ctk.CTkLabel(
+            master=self, text="", justify="left", anchor="w", textvariable=self.status
+        )
 
-        self.select_translation_combo.grid(sticky="EW")
-        self.textbox.grid(sticky="EWNS")
+        self.grid_columnconfigure(0, weight=1)
+        self.select_translation_combo.grid(row=0, column=0, sticky="EW")
+        self.textbox.grid(row=1, column=0, sticky="EWNS")
+        self.grid_rowconfigure(1, weight=1)
+        self.status_bar.grid(row=2, column=0, sticky="EW")
 
     def _get_free_token_tag(self) -> Tag:
         while True:
@@ -177,42 +194,70 @@ class Editor(ctk.CTkFrame):
     def reset_content(self):
         self.textbox.delete("1.0", "end")
 
-    def run_nlp(self):
-        # Analyze the text
-        text = self.textbox.get(0.0, "end-1c")
-        self.tokens = self.settings.translator.nlp(text)
+    # TODO: Push and pop status?
+    def set_status(self, text: str):
+        self.status.set(text)
 
+    def reset_status(self):
+        self.status.set("")
+
+    def clean_stale_tokens(self):
         existing_token_tags = self.textbox.tag_query(is_token_tag)
-        token_tag_ranges = set(existing_token_tags.values())
-        existing_token_tags = set(existing_token_tags.keys())
+        existing_token_tag_names = set(existing_token_tags.keys())
 
-        # Clean up token tag data for tags which don't exist anymore
+        # Clean up token tags which were deleted from the text
         for tag in list(self.token_tags.keys()):
-            if tag not in existing_token_tags:
+            if tag not in existing_token_tag_names:
                 del self.token_tags[tag]
                 self.textbox.tag_delete(tag)
 
-        # Add tags from NLP results
-        for token in self.tokens:
-            token_start = f"1.0+{token.idx}c"
-            token_end = f"1.0+{token.idx + len(token.text)}c"
+    def add_tokens(self, tokens: Doc):
+        for token in tokens:
+            token_range = IndexRange(
+                f"1.0+{token.idx}c", f"1.0+{token.idx + len(token.text)}c"
+            )
 
             # Don't tag the token again if the text is already tagged with a token tag
             # left from a previous translation
-            if any(
-                self.textbox.is_range_in_range(
-                    IndexRange(token_start, token_end), token_tag_range
-                )
-                for token_tag_range in token_tag_ranges
-            ):
+            overlapping_tags = self.textbox.overlapping_tag_names(token_range)
+            overlapping_token_tags_iter = filter(is_token_tag, overlapping_tags)
+            if any(overlapping_token_tags_iter):
                 continue
 
-            token_tag = self._get_free_token_tag()
-            self.token_tags[token_tag] = token
-            self.textbox.tag_add(token_tag, token_start, token_end)
+            new_token_tag = self._get_free_token_tag()
+            self.token_tags[new_token_tag] = token
+            self.textbox.tag_add(new_token_tag, token_range.start, token_range.end)
+            self.textbox.tag_add(TAG_TRANSLATABLE, token_range.start, token_range.end)
 
-            # if self.settings.filter_translatable(token):
-            self.textbox.tag_add(TAG_TRANSLATABLE, token_start, token_end)
+    def _threaded_nlp_task(self):
+        """Analyze tokens in text box and update the editor accordingly. Meant to be run in a different thread
+        as processing time can be high - therefore all ui calls should be done using the call queue API.
+        """
+        _, text_future = self._ui_call_queue.queue_ui_calls(
+            (
+                (self.set_status, ("Detecting tokens...",), None),
+                (self.get_and_lock_text, None, None),
+            )
+        )
+        self._ui_call_queue.signal_process_ui_calls()
+        text = text_future.wait()
+
+        self.tokens = self.settings.translator.nlp(text)
+
+        self._ui_call_queue.queue_ui_calls(
+            (
+                (self.clean_stale_tokens, None, None),
+                (self.set_status, ("Marking detected tokens...",), None),
+                (self.add_tokens, (self.tokens,), None),
+                (self.unlock_text, None, None),
+                (self.reset_status, None, None),
+            )
+        )
+        self._ui_call_queue.signal_process_ui_calls()
+
+    def detect_tokens(self):
+        nlp_thread = threading.Thread(target=self._threaded_nlp_task)
+        nlp_thread.start()
 
     def get_token_tag_for_event(self, event) -> Optional[TagInfo]:
         """Find the token tag which contains an event's location, if there is one.
@@ -293,9 +338,11 @@ class Editor(ctk.CTkFrame):
         selected_token = self.token_tags[selected_token_tag.tag]
 
         # Insert fitting separators before and after the inserted translation
-        if selected_token.text != translation and selected_token.i + 1 < len(
-            selected_token.doc
-        ) and (next_token := selected_token.nbor(1)).pos_ != "PUNCT":
+        if (
+            selected_token.text != translation
+            and selected_token.i + 1 < len(selected_token.doc)
+            and (next_token := selected_token.nbor(1)).pos_ != "PUNCT"
+        ):
             if not self.settings.filter_start_of_new_word(next_token):
                 translation += "-"
             else:
@@ -303,9 +350,19 @@ class Editor(ctk.CTkFrame):
 
         self.textbox.replace_text(selected_token_tag.range, translation)
 
-    def insert_text(self, text: str):
+    def set_text(self, text: str):
+        self.set_status("Importing text...")
         self.reset_content()
         self.textbox.insert("1.0", text)
+        self.reset_status()
 
     def get_text(self):
         return self.textbox.get("1.0", "end")
+
+    def get_and_lock_text(self):
+        text = self.textbox.get("1.0", "end-1c")
+        self.textbox.configure(state=ctk.DISABLED)
+        return text
+
+    def unlock_text(self):
+        self.textbox.configure(state=ctk.NORMAL)
