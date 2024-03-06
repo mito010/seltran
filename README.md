@@ -1,9 +1,6 @@
 # Selective Japanese Translator!
 
-
-https://github.com/sacred-serpent/seltran/assets/56104753/252ce8f0-cfd0-462e-8beb-8592dca99042
-
-https://github.com/sacred-serpent/seltran/assets/56104753/f70033de-e59d-40e5-8d38-c67ed0d59e54
+ ![seltran-demo-import](https://github.com/sacred-serpent/seltran/assets/56104753/bfdcfde9-d61a-43ed-8588-fe308f2b8ccb) ![seltran-demo-translate](https://github.com/sacred-serpent/seltran/assets/56104753/ce0bc460-bae0-47b5-b126-79dca4c2a030)
 
 ## What this is
 
