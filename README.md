@@ -10,7 +10,7 @@ automation based on natural language processing engines.
 
 At this stage, this is only a proof of concept for the value such a tool can be of for those wanting to learn Japanese (or other languages possibly)
 using Goken's subtitle format.
-If you like the idea or have any suggestions, please (!) open an issue or contact me @ megatron.levi@proton.me!
+If you like the idea or have any suggestions, please (!) open an issue or contact me!
 
 ## Try it out!
 
